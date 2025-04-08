@@ -1,6 +1,6 @@
 let weather = {
-  apiKey: process.env.OPENWEATHER_API_KEY,
-  unsplashAccessKey: process.env.UNSPLASH_ACCESS_KEY,
+  apiKey: process.env.OPENWEATHER_API_KEY,     
+  unsplashAccessKey: process.env.UNSPLASH_ACCESS_KEY, 
   intervalId: null,
   currentTempCelsius: null, // Store current temperature in Celsius
   currentCity: null, // Store current city
@@ -103,7 +103,7 @@ let weather = {
   search: function () {
     this.fetchWeather(document.querySelector(".search-bar").value);
   },
-
+// Update date and time based on timezone 
   updateDateTime: function (timezoneOffset) {
     const localDate = new Date();
     const utc = localDate.getTime() + localDate.getTimezoneOffset() * 60000;
