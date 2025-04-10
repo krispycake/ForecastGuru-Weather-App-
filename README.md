@@ -1,8 +1,18 @@
-# Real-Time Weather App
+# Real-Time Weather App (ForcastGuru) 🌤️
 
-A user-friendly real-time weather application built with HTML,CSS and JavaScript utilizes APIs for fetching weather and geolocation information. Get comprehensive future forecasts, insightful statistics, and unique AI-driven insights to help you navigate your day.
+ForecastGuru is a user-friendly weather application built using HTML, CSS, and JavaScrip that leverages real-time APIs for weather and geolocation data to help you navigate your day with ease
 
+**ForecastGuru offers:**
+* Future Weather at a Glance
+* Insightful Statistics
+* Smart AI-Powered Insights
 
+# Deployed Version
+Check out the live deployed version here: [**https://forecastguru.vercel.app/**](https://forecastguru.vercel.app/)
+
+![Image](https://github.com/user-attachments/assets/956a6190-41dc-4581-ad5c-c2939f889bd5)
+![Image](https://github.com/user-attachments/assets/ac439104-15ef-4241-a1ad-d2bc5bdf922f)
+![Image](https://github.com/user-attachments/assets/9cb6b1ae-4ad7-46d0-908c-42f258dc5010)
 
 # Tools and Technologies
 - **HTML 5**
