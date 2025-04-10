@@ -1,20 +1,14 @@
 let weather = {
-  apiKey: process.env.OPENWEATHER_API_KEY,     
-  unsplashAccessKey: process.env.UNSPLASH_ACCESS_KEY, 
   intervalId: null,
-  currentTempCelsius: null, // Store current temperature in Celsius
-  currentCity: null, // Store current city
-  weatherData: null, // Store complete weather data
-  forecastData: null, // Store forecast data
+  currentTempCelsius: null,
+  currentCity: null,
+  weatherData: null,
+  forecastData: null,
 
+  // Fetch weather data for a city
   fetchWeather: function (city) {
     this.currentCity = city;
-    fetch(
-      "https://api.openweathermap.org/data/2.5/weather?q=" +
-        city +
-        "&units=metric&appid=" +
-        this.apiKey
-    )
+    fetch(`/api/weather?city=${encodeURIComponent(city)}`)
       .then((response) => {
         if (!response.ok) {
           alert("No weather found.");
@@ -30,6 +24,7 @@ let weather = {
       });
   },
 
+  //Display weather data
   displayWeather: function (data) {
     const { name } = data;
     const { icon, description } = data.weather[0];
@@ -80,9 +75,8 @@ let weather = {
   },
 
   fetchBackgroundImage: function (city) {
-    fetch(
-      `https://api.unsplash.com/photos/random?query=${city}&client_id=${this.unsplashAccessKey}`
-    )
+    // Use serverless function instead of calling Unsplash directly
+    fetch(`/api/background?city=${encodeURIComponent(city)}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Error fetching background image from Unsplash.");
@@ -103,7 +97,8 @@ let weather = {
   search: function () {
     this.fetchWeather(document.querySelector(".search-bar").value);
   },
-// Update date and time based on timezone 
+
+  // Update date and time based on timezone 
   updateDateTime: function (timezoneOffset) {
     const localDate = new Date();
     const utc = localDate.getTime() + localDate.getTimezoneOffset() * 60000;
@@ -146,6 +141,7 @@ let weather = {
     }
   },
   
+  // Update forecast temperatures based on the selected unit
   updateForecastTemperatures: function(toCelsius) {
     const forecastItems = document.querySelectorAll('.forecast-item');
     
@@ -168,9 +164,8 @@ let weather = {
 
   // Fetch forecast data for a city
   fetchForecast: function(city) {
-    fetch(
-      `https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${this.apiKey}`
-    )
+    // Use  serverless function instead of calling OpenWeather directly
+    fetch(`/api/forecast?city=${encodeURIComponent(city)}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("No forecast found.");
@@ -189,7 +184,7 @@ let weather = {
     const forecastContainer = document.querySelector(".forecast-container");
     forecastContainer.innerHTML = "";
     
-    // Get one forecast per day (every 8th item is a new day, as data is in 3-hour intervals)
+    // Get one forecast per day 
     const dailyForecasts = [];
     const processedDates = new Set();
     
@@ -223,7 +218,7 @@ let weather = {
     });
   },
 
-  // Generate AI-powered weather insights using Gemini API
+  // Generate AI-powered weather insights using our serverless function
   generateWeatherInsights: async function(data) {
     const insightsContainer = document.querySelector(".ai-insights");
     insightsContainer.innerHTML = `
@@ -236,31 +231,27 @@ let weather = {
       <p>Generating personalized insights with Gemini AI...</p>
     `;
     
-    // Extract relevant weather data
-    const { name } = data;
-    const { temp, humidity, feels_like } = data.main;
-    const { description, main } = data.weather[0];
-    const { speed } = data.wind;
-    const { country } = data.sys;
-    
-    // Format the prompt for Gemini API
-    const prompt = `You are an AI weather assistant. Provide 3-4 personalized insights and recommendations based on the following weather conditions in ${name}, ${country}:
-    - Temperature: ${temp}°C (feels like ${feels_like}°C)
-    - Weather: ${main} (${description})
-    - Humidity: ${humidity}%
-    - Wind speed: ${speed} km/h
-    
-    Format your response as a bulleted list with emoji icons. Include health tips, clothing recommendations, activity suggestions, and any relevant safety precautions. Keep each point concise and actionable.`;
-    
     try {
-      // Call the Gemini API
-      const insights = await this.callGeminiAPI(prompt);
+      // Call serverless function instead of Gemini API directly
+      const response = await fetch('/api/insights', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const result = await response.json();
       document.getElementById('insights-loader').style.display = 'none';
       
-      if (insights && insights.trim()) {
+      if (result.text && result.text.trim()) {
         // Format the insights
-        const formattedInsights = insights
-          .replace(/^\s*[-•]\s*/gm, '') // Remove bullet points
+        const formattedInsights = result.text
+          .replace(/^\s*[-•]\s*/gm, '') 
           .split('\n')
           .filter(line => line.trim() !== '');
         
@@ -271,7 +262,7 @@ let weather = {
           insightsList.appendChild(insightItem);
         });
         
-        // Clear loading message and append insights
+        
         insightsContainer.innerHTML = `
           <div class="insights-header">
             <h3><i class="fas fa-robot"></i> AI Weather Insights</h3>
@@ -287,56 +278,6 @@ let weather = {
       // Use fallback insights if API fails
       document.getElementById('insights-loader').style.display = 'none';
       this.generateFallbackInsights(data);
-    }
-  },
-
-  // Call Gemini API using fetch
-  callGeminiAPI: async function(prompt) {
-    try {
-      const apiKey = process.env.GEMINI_ACCESS_KEY;
-      const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-      
-      // Here prompt is the variable containing our constructed prompt string
-      // and we're assigning it to the text property in the request body
-      const requestBody = {
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt  // Correctly assigning the prompt variable to the text property
-              }
-            ]
-          }
-        ]
-      };
-      
-      const response = await fetch(`${endpoint}?key=${apiKey}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(requestBody)
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        console.error('API response error:', errorData);
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      
-      // Check if the response has the expected structure
-      if (data.candidates && data.candidates[0] && data.candidates[0].content && 
-          data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
-        return data.candidates[0].content.parts[0].text;
-      } else {
-        console.error('Unexpected API response structure:', data);
-        throw new Error('Unexpected API response structure');
-      }
-    } catch (error) {
-      console.error('Error with Gemini API:', error);
-      throw error;
     }
   },
 
@@ -422,9 +363,8 @@ let weather = {
 
   // Fetch weather by coordinates
   fetchWeatherByCoords: function(lat, lon) {
-    fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${this.apiKey}`
-    )
+    // Use  serverless function with coordinates
+    fetch(`/api/weather?lat=${lat}&lon=${lon}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("No weather found.");
@@ -441,7 +381,7 @@ let weather = {
       .catch(error => console.error("Weather Error:", error));
   },
 
-  // Show AI insights modal
+  // Show AI insights modal window
   showAIInsightsModal: async function() {
     const modal = document.getElementById('aiInsightsModal');
     modal.style.display = 'block';
@@ -463,16 +403,14 @@ let weather = {
     if (!this.currentCity) return;
     
     const historyContainer = document.querySelector(".weather-history");
-    historyContainer.innerHTML = "<h3>Weather Statistics</h3><p>Loading historical data...</p>";
+    historyContainer.innerHTML = "<h3>Weather Statistics</h3><p>Loading  data...</p>";
     
-    // In a real app, you would fetch historical data from a weather API
-    // For this demo, we'll simulate with some static data
+    
     setTimeout(() => {
       const historicalData = {
         "averageTemp": (this.currentTempCelsius - 2 + Math.random() * 4).toFixed(1),
         "maxTemp": (this.currentTempCelsius + 2 + Math.random() * 3).toFixed(1),
         "minTemp": (this.currentTempCelsius - 4 - Math.random() * 2).toFixed(1),
-        "rainDays": Math.floor(Math.random() * 10),
       };
       
       historyContainer.innerHTML = `
@@ -480,9 +418,77 @@ let weather = {
         <p>Monthly Average Temperature: ${historicalData.averageTemp}°C</p>
         <p>Monthly Maximum Temperature: ${historicalData.maxTemp}°C</p>
         <p>Monthly Minimum Temperature: ${historicalData.minTemp}°C</p>
-        <p>Average Rain Days per Month: ${historicalData.rainDays}</p>
       `;
     }, 1000);
+  },
+
+  // Generate AI-powered weather insights using serverless function
+  generateWeatherInsights: async function(data) {
+    const insightsContainer = document.querySelector(".ai-insights");
+    insightsContainer.innerHTML = `
+      <div class="insights-header">
+        <h3><i class="fas fa-robot"></i> AI Weather Insights</h3>
+        <div class="loading-spinner" id="insights-loader">
+          <div class="spinner"></div>
+        </div>
+      </div>
+      <p>Generating personalized insights with Gemini AI...</p>
+    `;
+    
+    try {
+      // Prepare data for insights API - include forecast if available
+      const insightsData = { ...data };
+      if (this.forecastData) {
+        insightsData.forecast = this.forecastData;
+      }
+      
+      // Call serverless function with weather and forecast data
+      const response = await fetch('/api/insights', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(insightsData)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      document.getElementById('insights-loader').style.display = 'none';
+      
+      if (result.text && result.text.trim()) {
+        // Format the insights
+        const formattedInsights = result.text
+          .replace(/^\s*[-•]\s*/gm, '') 
+          .split('\n')
+          .filter(line => line.trim() !== '');
+        
+        const insightsList = document.createElement("ul");
+        formattedInsights.forEach(insight => {
+          const insightItem = document.createElement("li");
+          insightItem.innerHTML = insight;
+          insightsList.appendChild(insightItem);
+        });
+        
+        // Clear loading message and append insights
+        insightsContainer.innerHTML = `
+          <div class="insights-header">
+            <h3><i class="fas fa-robot"></i> AI Weather Insights</h3>
+          </div>
+        `;
+        insightsContainer.appendChild(insightsList);
+      } else {
+        // Fallback if API returns empty response
+        this.generateFallbackInsights(data);
+      }
+    } catch (error) {
+      console.error('Gemini API Error:', error);
+      // Use fallback insights if API fails
+      document.getElementById('insights-loader').style.display = 'none';
+      this.generateFallbackInsights(data);
+    }
   },
 
   // Initialize the app
